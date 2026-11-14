@@ -36,7 +36,7 @@ jobs:
           ZIP=$(find . -maxdepth 2 -type f -iname "*.zip" | head -n 1)
 
           if [ -z "$ZIP" ]; then
-            echo "ERROR: File ZIP tidak ditemukan!"
+            echo "ERROR: ZIP tidak ditemukan!"
             exit 1
           fi
 
@@ -44,22 +44,61 @@ jobs:
           mkdir -p extracted
           unzip -oq "$ZIP" -d extracted
 
-      - name: Build APK
+      - name: Find Android Project
+        shell: bash
         run: |
-          PROJECT=$(find extracted -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+          SETTINGS=$(find extracted -type f \( \
+            -name settings.gradle.kts -o \
+            -name settings.gradle \
+          \) | head -n 1)
 
-          if [ -z "$PROJECT" ]; then
-            echo "ERROR: Gradle project tidak ditemukan!"
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle tidak ditemukan!"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$PROJECT")
-          echo "Building: $PROJECT_DIR"
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "$PROJECT_DIR" > project_dir.txt
+          echo "Project ditemukan: $PROJECT_DIR"
+
+      - name: Fix Java Kotlin JVM Target
+        shell: bash
+        run: |
+          PROJECT_DIR=$(cat project_dir.txt)
+          APP_GRADLE="$PROJECT_DIR/app/build.gradle.kts"
+
+          if [ ! -f "$APP_GRADLE" ]; then
+            echo "ERROR: app/build.gradle.kts tidak ditemukan!"
+            exit 1
+          fi
+
+          cat >> "$APP_GRADLE" <<'EOF'
+
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+          }
+
+          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
+          echo "Java dan Kotlin target sudah disamakan ke 17"
+
+      - name: Build APK
+        shell: bash
+        run: |
+          PROJECT_DIR=$(cat project_dir.txt)
           gradle -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FARUQ-GENERATOR-APK
-          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
