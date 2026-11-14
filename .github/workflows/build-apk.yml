@@ -1,16 +1,48 @@
 
-      - name: Build APK
+name: Build FARUQ GENERATOR APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Find and Build Project
+        shell: bash
         run: |
-          echo "Mencari folder project..."
-          find . -name settings.gradle.kts -o -name settings.gradle
+          SETTINGS=$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.gradle/*' | head -n 1)
 
-          PROJECT_DIR=$(dirname "$(find . -name settings.gradle.kts -o -name settings.gradle | head -n 1)")
-
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-            PROJECT_DIR="."
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle tidak ditemukan!"
+            echo "Periksa struktur repository."
+            exit 1
           fi
 
-          echo "Project ditemukan: $PROJECT_DIR"
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "Project: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           gradle assembleDebug
 
