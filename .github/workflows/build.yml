@@ -30,12 +30,36 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Extract ZIP Automatically
+        shell: bash
+        run: |
+          ZIP=$(find . -maxdepth 2 -type f -iname "*.zip" | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: File ZIP tidak ditemukan!"
+            exit 1
+          fi
+
+          echo "ZIP ditemukan: $ZIP"
+          mkdir -p extracted
+          unzip -oq "$ZIP" -d extracted
+
       - name: Build APK
-        run: gradle assembleDebug
+        run: |
+          PROJECT=$(find extracted -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+
+          if [ -z "$PROJECT" ]; then
+            echo "ERROR: Gradle project tidak ditemukan!"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT")
+          echo "Building: $PROJECT_DIR"
+          gradle -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FARUQ-GENERATOR-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
