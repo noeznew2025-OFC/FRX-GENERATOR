@@ -1,4 +1,5 @@
 name: Build GAME BOOSTER BY FARUQ
+
 on:
   workflow_dispatch:
   push:
@@ -9,12 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cek struktur repo
-        run: |
-          pwd
-          ls -la
-          find . -maxdepth 3 -name "settings.gradle*"
 
       - uses: actions/setup-java@v4
         with:
@@ -28,7 +23,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: "8.9"
 
       - name: Build debug APK
         run: gradle assembleDebug
